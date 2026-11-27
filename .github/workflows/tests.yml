@@ -31,3 +31,16 @@ jobs:
         run: /tmp/luau-build/luau tests/exhaustive.lua
       - name: Detect deliberate behavioral regressions
         run: python3 tests/mutation.py --runner /tmp/luau-build/luau
+  portable-integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install Lua 5.4
+        run: sudo apt-get update && sudo apt-get install -y lua5.4
+      - name: Run portable regression suite
+        run: lua5.4 tests/run.lua
+      - name: Test the example boundary with mocks (not Studio)
+        run: lua5.4 tests/mock_roblox.lua
