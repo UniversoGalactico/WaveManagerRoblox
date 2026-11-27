@@ -5,9 +5,10 @@
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 local WaveManager = require(script.Parent.WaveManagerRoblox)
-local template = ServerStorage:WaitForChild("EnemyTemplate")
-local spawnPoint = workspace:WaitForChild("EnemySpawn")
-assert(template:IsA("Model") and spawnPoint:IsA("BasePart"))
+local template = ServerStorage:WaitForChild("EnemyTemplate", 10)
+local spawnPoint = workspace:WaitForChild("EnemySpawn", 10)
+assert(template and template:IsA("Model"), "Missing ServerStorage.EnemyTemplate Model")
+assert(spawnPoint and spawnPoint:IsA("BasePart"), "Missing Workspace.EnemySpawn BasePart")
 
 local match = WaveManager.new({
     {count = 3, countdown = 3, duration = 30, intermission = 3},
