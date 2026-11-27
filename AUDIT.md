@@ -2,7 +2,7 @@
 
 ## Verdict
 
-The original controller needed replacement, not incremental cosmetic repair. Version 2.0.0-rc.5 is suitable for controlled Studio integration and evaluation, not an unconditional production certification. The legacy main branch is preserved because the API is intentionally incompatible.
+The original controller needed replacement, not incremental cosmetic repair. Version 2.0.0 is suitable for release within the documented scope, following native CI and owner-reported real Studio stress validation. It is not an unconditional production certification. Version 1 callers must migrate explicitly.
 
 ## Original defects and design decisions
 
@@ -54,7 +54,7 @@ This design costs memory and dispatch overhead per controller. A local synthetic
 | Match isolation (native Luau and local Lua 5.4) | 256 interleaved matches, 5,120 waves, 61,184 commands |
 | Generated configuration (native Luau and local Lua 5.4) | 20,000 plans: 4,982 valid copied, 15,018 invalid rejected |
 
-Native and portable regression/mutation/mock CI evidence: [run 46081949237](https://github.com/UniversoGalactico/WaveManagerRoblox/actions/runs/46081949237), commit 85353af677eff99b1a625c5ef08b739bd86fa86d. Numeric and GC checks subsequently passed in [run 46082099940](https://github.com/UniversoGalactico/WaveManagerRoblox/actions/runs/46082099940). All 33 mutant sources were also independently compiled under Lua 5.4 to exclude syntax-only failures. All 11 code/test/example file blob IDs were checked against the locally tested copies; the full expanded suite passed in [run 46082266870](https://github.com/UniversoGalactico/WaveManagerRoblox/actions/runs/46082266870), commit 123ba40700ae39d0a21e865b749c88606ef179cf. Subsequent changes are documentation only. Local runs used Lua 5.4, not Roblox.
+Native and portable regression/mutation/mock CI evidence: [run 46081949237](https://github.com/UniversoGalactico/WaveManagerRoblox/actions/runs/46081949237), commit 85353af677eff99b1a625c5ef08b739bd86fa86d. Numeric and GC checks subsequently passed in [run 46082099940](https://github.com/UniversoGalactico/WaveManagerRoblox/actions/runs/46082099940). All 33 mutant sources were also independently compiled under Lua 5.4 to exclude syntax-only failures. All 11 code/test/example file blob IDs were checked against the locally tested copies; the full expanded suite passed in [run 46082266870](https://github.com/UniversoGalactico/WaveManagerRoblox/actions/runs/46082266870), commit 123ba40700ae39d0a21e865b749c88606ef179cf. The stable promotion changes only the core version string; local automated runs used Lua 5.4, not Roblox. Separate real Studio results are documented below.
 
 ## Complexity and boundaries
 
@@ -62,11 +62,14 @@ Construction copies O(waves) configuration. Registration and resolution have exp
 
 Core methods do not yield, start tasks, invoke callbacks or use global Roblox services. They are designed for one serial server context, not concurrent Parallel Luau Actors. The private state design is not a security sandbox against trusted server code using raw operations. Treat clients as untrusted and never accept their tokens or kill claims directly.
 
-## Remaining validation / release gates
+## Roblox Studio validation (2026-11-27)
 
-1. Run the provided asset-free smoke script in actual Roblox Studio.
-2. Run the spawning example with real Humanoid NPCs, delayed signals, network load, and explicit owner-driven teardown. A script's own Destroying signal is best-effort under deferred engine events.
-3. Profile actual gameplay with representative enemy counts. Synthetic IDs do not measure animation, physics, AI, networking, or server FPS.
-4. Migrate v1 callers explicitly. The module is an orchestration core, not an NPC AI/spawner, matchmaking system, base health manager, reward service or replication layer.
+The repository owner reported PASS for the asset-free smoke test and the final Studio stress suite. The supplied log independently records 42/42 moving Humanoid rigs (minimum displacement 9.22 studs), 64 simultaneous Humanoid deaths, and PASS for cases 01–13. The final v3 run was reported as all PASS; its full output was not supplied. The Studio suite skips deliberately thrown exceptions by default to avoid debugger interruptions; those cases passed native CI. The tested rc.5 module has blob ID c503ef19828722c27ca41ff1d932f1cfabffdc97. The stable module differs only in version metadata. See [validation record](docs/STUDIO_VALIDATION.md).
 
-No claim is made that every possible Roblox integration is correct. The draft pull request remains the review point.
+## Remaining limitations
+
+1. Profile real multiplayer servers with representative NPC AI, physics and network load. Synthetic IDs do not measure server FPS or NPC throughput.
+2. Integrate explicit owner-driven teardown; a script's own Destroying signal is best-effort under deferred engine events. The example is not independently certified for every integration.
+3. Migrate v1 callers explicitly. This is an orchestration core, not an NPC AI/spawner, matchmaking system, base health manager, reward service or replication layer.
+
+No claim is made that every possible Roblox integration is correct.
