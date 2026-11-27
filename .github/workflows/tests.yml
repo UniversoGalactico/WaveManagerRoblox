@@ -31,6 +31,8 @@ jobs:
         run: /tmp/luau-build/luau tests/exhaustive.lua
       - name: Fractional-time and simulated-day checks
         run: /tmp/luau-build/luau tests/numeric.lua
+      - name: Interleaved match isolation
+        run: /tmp/luau-build/luau tests/isolation.lua
       - name: Detect deliberate behavioral regressions
         run: python3 tests/mutation.py --runner /tmp/luau-build/luau
   portable-integration:
