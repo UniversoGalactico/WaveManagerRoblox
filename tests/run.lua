@@ -127,6 +127,25 @@ ok(f:start())
 ok(f:step(1e100))
 eq(f:getState().phase, "Failed")
 
+-- Fractional frame partitions must not leave a one-frame countdown residue.
+for _, parts in ipairs({3,6,7,10,12,30,60,100,120,1000,10000,100000}) do
+    local fractional = W.new({wave(1,1,2,0)})
+    ok(fractional:start())
+    for _ = 1, parts do assert(fractional:step(1/parts)) end
+    local state = fractional:getState()
+    eq(state.phase,"Active")
+    assert(math.abs(state.timeLeft-2) < 1e-8)
+end
+local tiny = W.new({wave(1,1e-12,1,0)})
+ok(tiny:start()); eq(tiny:getState().phase,"Countdown")
+ok(tiny:step(0)); eq(tiny:getState().phase,"Countdown")
+ok(tiny:step(1e-12)); eq(tiny:getState().phase,"Active")
+local precise = W.new({wave(1,3600,1,0)})
+ok(precise:start())
+for _ = 1, 216000 do assert(precise:step(1/60)) end
+eq(precise:getState().phase,"Active")
+assert(math.abs(precise:getState().timeLeft-1) < 1e-8)
+
 -- Input validation including sparse arrays and locked metatables.
 for _, p in ipairs({{}, {false}, {[2] = wave(1,0,1,0)}, {wave(1,0,1,0), extra = true},
     {wave(0,0,1,0)}, {wave(1.5,0,1,0)}, {wave(10001,0,1,0)},
@@ -146,6 +165,9 @@ for _, id in ipairs({false, 0/0, math.huge, 1.1, "", string.rep("x",129), functi
     no(g:registerEnemy(gt, id)); no(g:enemyKilled(gt, id))
 end
 no(g:registerEnemy(gt, nil))
+no(g:registerEnemy(gt, 9007199254740992))
+no(g:registerEnemy(gt, -9007199254740992))
+if math.mininteger then no(g:registerEnemy(gt, math.mininteger)) end
 local id = {}
 ok(g:registerEnemy(gt, id)); ok(h:registerEnemy(ht, id))
 ok(g:enemyKilled(gt, id))
