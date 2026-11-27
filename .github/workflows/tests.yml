@@ -52,3 +52,38 @@ jobs:
         run: lua5.4 tests/mock_roblox.lua
       - name: Check identity release with forced Lua collection
         run: lua5.4 tests/resource.lua
+
+  publish-v2:
+    # Publish this one specific release only, after both test jobs pass on main.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [luau, portable-integration]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    concurrency:
+      group: wave-manager-release-v2-0-0
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Publish stable v2.0.0 (no overwrite)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! grep -Fq 'local WaveManager = { VERSION = "2.0.0" }' WaveManagerRoblox.lua; then
+            echo "Not the v2.0.0 release; skipping."
+            exit 0
+          fi
+          if gh release view v2.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v2.0.0 already exists; leaving it unchanged."
+            exit 0
+          fi
+          gh release create v2.0.0 WaveManagerRoblox.lua \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "WaveManagerRoblox 2.0.0" \
+            --notes-file CHANGELOG.md \
+            --latest
