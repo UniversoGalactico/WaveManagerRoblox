@@ -27,3 +27,7 @@ jobs:
           cmake --build /tmp/luau-build --target Luau.Repl.CLI -j 2
       - name: Run native Luau regression suite
         run: /tmp/luau-build/luau tests/run.lua
+      - name: Explore bounded state space
+        run: /tmp/luau-build/luau tests/exhaustive.lua
+      - name: Detect deliberate behavioral regressions
+        run: python3 tests/mutation.py --runner /tmp/luau-build/luau
