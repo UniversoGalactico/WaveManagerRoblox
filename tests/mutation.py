@@ -20,7 +20,7 @@ MUTANTS = [
     ("paused registration", '    if s.paused then return false, "paused" end\n', '', 2),
     ("discard overshoot", '        dt = math.max(0, -remaining)', '        dt = 0', 1),
     ("timeout wins", 'terminal(s, "Failed", "timeout")', 'terminal(s, "Completed", "timeout")', 1),
-    ("alias caller plan", '    return result\nend\n\nlocal function get', '    return plan\nend\n\nlocal function get', 1),
+    ("alias caller plan", '    return result\nend\n\nlocal function live', '    return plan\nend\n\nlocal function live', 1),
     ("stale registration", '    if not rawequal(token, s.token) then return false, "stale-token" end\n', '', 1),
     ("stale resolution", '    if not rawequal(token, s.token) then return false, "stale-token" end\n', '', 2),
     ("duplicate registration", '    if s.enemies[id] ~= nil then return false, "duplicate-enemy" end\n', '', 1),
@@ -46,6 +46,8 @@ MUTANTS = [
     ("no clock compensation", 'local corrected = dt + s.timeError', 'local corrected = dt', 1),
     ("no timer tolerance", 'local TIME_EPSILON = 1e-9', 'local TIME_EPSILON = 0', 1),
     ("unsafe numeric identities", 'id >= -9007199254740991 and id <= 9007199254740991', 'true', 1),
+    ("method owner mismatch", '            assert(rawequal(receiver, self), "Use a WaveManager instance with \':\'")\n', '', 1),
+    ("mutable controller", '        __newindex = function() error("WaveManager instances are read-only", 2) end,\n', '', 1),
 ]
 
 
