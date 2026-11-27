@@ -18,7 +18,7 @@ local folder = Instance.new("Folder")
 folder.Name = "WaveDemoEnemies"
 folder.Parent = workspace
 local tracked = {}
-local heartbeat
+local heartbeat, teardown
 local stopped = false
 local last = os.clock()
 local lastToken
@@ -47,6 +47,7 @@ local function stop()
     if stopped then return end
     stopped = true
     if heartbeat then heartbeat:Disconnect() end
+    if teardown then teardown:Disconnect() end
     for model in pairs(tracked) do
         cleanup(model)
     end
@@ -106,7 +107,7 @@ end)
 
 -- In a real game, the match owner must cancel + stop on match teardown.
 -- For example, when the last player leaves or the arena is removed.
-script.Destroying:Connect(function()
+teardown = script.Destroying:Connect(function()
     match:cancel()
     stop()
 end)
