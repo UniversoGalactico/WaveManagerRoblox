@@ -2,7 +2,7 @@
 
 A small, dependency-free, server-side wave controller for Roblox survival and tower-defense games. One controller represents one match, not one player.
 
-> **v2.0.0-rc.3 — breaking API change.** The original singleton API is not compatible. Native Luau CI and Roblox Studio validation are release gates; the core regression suite has been executed locally under Lua 5.4.
+> **v2.0.0-rc.4 — breaking API change.** The original singleton API is not compatible. Native Luau CI and Roblox Studio validation are release gates; the core regression suite has been executed locally under Lua 5.4.
 
 ## Install
 
@@ -106,7 +106,7 @@ A stale or duplicate notification cannot deal damage through this pattern. A fat
 4. Use a real death event, e.g. Humanoid.Died. Destroying a model does not necessarily mean it was killed. Use enemyEscaped for escapes, and fail/cancel for external termination.
 5. Detect new waves by token, not just phase: zero countdown and intermission can transition directly from Active to Active in the same call.
 6. Spawn, despawn, movement, rewards, player lifecycle, networking and UI belong to the caller. Cancel and clean up when the owner removes a live match.
-7. Core calls do not yield or invoke callbacks. Use a single serial execution context; this is not cross-Actor synchronization. A timeout processed before a death wins by definition. Fractional seconds use floating-point arithmetic.
+7. Core calls do not yield or invoke callbacks. Use a single serial execution context; this is not cross-Actor synchronization. A timeout processed before a death wins by definition. Fractional seconds use compensated floating-point subtraction. After a positive time step, a residue of 1 nanosecond or less is treated as elapsed; a zero step does not consume a positive timer.
 
 ## Migration from v1
 
@@ -116,21 +116,23 @@ A stale or duplicate notification cannot deal damage through this pattern. A fat
 | PauseWave(player) / ResumeWave(player) | match:pause() / match:resume() |
 | OnEnemyKilled(enemy, player) | match:registerEnemy(token, enemy), then match:enemyKilled(token, enemy) |
 | GetWaveState(player) | match:getState() |
-| CancelWave(player) | match:cancel() |
+| No equivalent in v1 | match:cancel() / match:fail() |
 
-Player-to-match mappings now belong to your game. Multiple players can share one match controller.
+Player-to-match mappings now belong to your game. Multiple players can share one match controller. Enemy types, bosses and spawn intervals can live in a separate game-specific wave catalog indexed by snapshot.wave. To grant wave rewards once, compare the monotonic completedWaves counter with the last rewarded value.
 
 ## Reproduce tests
 
 ```sh
 luau tests/run.lua
+luau tests/exhaustive.lua
 python3 tests/mutation.py --runner luau
 # Or use Lua 5.4 as a portable fallback:
 lua5.4 tests/run.lua
+lua5.4 tests/exhaustive.lua
 python3 tests/mutation.py --runner lua5.4
 ```
 
-The local Lua 5.4 run for rc.3 passed 2,732,757 assertions, including 157,961 model-checked randomized operations, 500 success-biased campaigns, a 1,000-wave run and a 10,000-enemy wave. The mutation audit detected all 28 intentional regressions. These checks are not a proof of correctness, a native Luau result, or an NPC throughput benchmark.
+The local Lua 5.4 run for rc.4 passed 2,732,792 counted assertions, including 157,961 model-checked randomized operations, 500 success-biased campaigns, a 1,000-wave run and a 10,000-enemy wave. Additional fractional-timer checks include 216,000 simulated frames. The bounded exhaustive test explored 128 two-wave configurations, 30,528 abstract states and 885,312 commands (including rejection codes). The mutation audit detected all 31 intentional regressions. These checks are not a proof of correctness, a native Luau result, or an NPC throughput benchmark.
 
 ## License
 
