@@ -29,6 +29,8 @@ jobs:
         run: /tmp/luau-build/luau tests/run.lua
       - name: Explore bounded state space
         run: /tmp/luau-build/luau tests/exhaustive.lua
+      - name: Fractional-time and simulated-day checks
+        run: /tmp/luau-build/luau tests/numeric.lua
       - name: Detect deliberate behavioral regressions
         run: python3 tests/mutation.py --runner /tmp/luau-build/luau
   portable-integration:
@@ -44,3 +46,5 @@ jobs:
         run: lua5.4 tests/run.lua
       - name: Test the example boundary with mocks (not Studio)
         run: lua5.4 tests/mock_roblox.lua
+      - name: Check identity release with forced Lua collection
+        run: lua5.4 tests/resource.lua
