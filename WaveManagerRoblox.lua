@@ -1,6 +1,6 @@
--- WaveManager v2.0.0-rc.5 | Server-side, dependency-free.
+-- WaveManager v2.0.0 | Server-side, dependency-free.
 -- One instance per match (solo or co-op). Drive time with :step(dt).
-local WaveManager = { VERSION = "2.0.0-rc.5" }
+local WaveManager = { VERSION = "2.0.0" }
 local Methods = {}
 local MAX_WAVES, MAX_ENEMIES, LOG_SIZE = 1000, 10000, 64
 local TIME_EPSILON = 1e-9 -- sub-nanosecond residues are not gameplay time
