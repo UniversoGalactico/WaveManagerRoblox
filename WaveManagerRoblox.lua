@@ -1,6 +1,6 @@
--- WaveManager v2.0.0-rc.1 | Server-side, dependency-free.
+-- WaveManager v2.0.0-rc.2 | Server-side, dependency-free.
 -- One instance per match (solo or co-op). Drive time with :step(dt).
-local WaveManager = { VERSION = "2.0.0-rc.1" }
+local WaveManager = { VERSION = "2.0.0-rc.2" }
 local Methods = {}
 local Private = setmetatable({}, { __mode = "k" })
 local Meta = { __index = Methods, __metatable = "WaveManager" }
@@ -33,6 +33,10 @@ local function copyPlan(plan)
     for i = 1, length do
         local w = plan[i]
         assert(type(w) == "table" and getmetatable(w) == nil, "Invalid or missing wave " .. i)
+        for key in pairs(w) do
+            assert(key == "count" or key == "duration" or key == "countdown" or key == "intermission",
+                "Unknown field in wave " .. i)
+        end
         result[i] = {
             count = numberField(w.count, 1, MAX_ENEMIES, true, "enemy count"),
             duration = duration(w.duration, 60, 0.001, "duration"),
@@ -81,7 +85,7 @@ end
 local function beginWave(s)
     s.wave = s.wave + 1
     local w = s.plan[s.wave]
-    s.total, s.registered, s.killed = w.count, 0, 0
+    s.total, s.registered, s.killed, s.escaped = w.count, 0, 0, 0
     s.enemies, s.token = {}, nil
     enter(s, "Countdown", w.countdown)
 end
@@ -121,7 +125,7 @@ function WaveManager.new(plan)
     local self = setmetatable({}, Meta)
     Private[self] = {
         plan = copyPlan(plan), phase = "Idle", paused = false, wave = 0,
-        total = 0, registered = 0, killed = 0, completedWaves = 0,
+        total = 0, registered = 0, killed = 0, escaped = 0, completedWaves = 0,
         timeLeft = 0, enemies = {}, log = {}, sequence = 0,
     }
     return self
@@ -181,16 +185,27 @@ function Methods:registerEnemy(token, id)
     return true
 end
 
-function Methods:enemyKilled(token, id)
-    local s = get(self)
+local function resolveEnemy(s, token, id, outcome)
     if s.phase ~= "Active" then return false, "not-active" end
     if not rawequal(token, s.token) then return false, "stale-token" end
     if not validId(id) then return false, "invalid-enemy-id" end
     if s.enemies[id] ~= true then return false, "unknown-or-resolved-enemy" end
     s.enemies[id] = false
-    s.killed = s.killed + 1
-    if s.killed == s.total then finishWave(s) end
+    if outcome == "killed" then
+        s.killed = s.killed + 1
+    else
+        s.escaped = s.escaped + 1
+    end
+    if s.killed + s.escaped == s.total then finishWave(s) end
     return true
+end
+
+function Methods:enemyKilled(token, id)
+    return resolveEnemy(get(self), token, id, "killed")
+end
+
+function Methods:enemyEscaped(token, id)
+    return resolveEnemy(get(self), token, id, "escaped")
 end
 
 function Methods:cancel()
@@ -214,9 +229,10 @@ function Methods:getState()
         waveCount = #s.plan, completedWaves = s.completedWaves,
         timeLeft = s.timeLeft, totalEnemies = s.total,
         registeredEnemies = s.registered, killedEnemies = s.killed,
-        remainingEnemies = s.total - s.killed,
+        escapedEnemies = s.escaped, resolvedEnemies = s.killed + s.escaped,
+        remainingEnemies = s.total - s.killed - s.escaped,
         unregisteredEnemies = s.total - s.registered,
-        aliveEnemies = s.registered - s.killed,
+        aliveEnemies = s.registered - s.killed - s.escaped,
         token = s.token, reason = s.reason,
     }
 end
