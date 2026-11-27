@@ -1,9 +1,7 @@
--- WaveManager v2.0.0-rc.4 | Server-side, dependency-free.
+-- WaveManager v2.0.0-rc.5 | Server-side, dependency-free.
 -- One instance per match (solo or co-op). Drive time with :step(dt).
-local WaveManager = { VERSION = "2.0.0-rc.4" }
+local WaveManager = { VERSION = "2.0.0-rc.5" }
 local Methods = {}
-local Private = setmetatable({}, { __mode = "k" })
-local Meta = { __index = Methods, __metatable = "WaveManager" }
 local MAX_WAVES, MAX_ENEMIES, LOG_SIZE = 1000, 10000, 64
 local TIME_EPSILON = 1e-9 -- sub-nanosecond residues are not gameplay time
 
@@ -46,12 +44,6 @@ local function copyPlan(plan)
         }
     end
     return result
-end
-
-local function get(self)
-    local s = Private[self]
-    assert(s, "Use a WaveManager instance with ':'")
-    return s
 end
 
 local function live(s)
@@ -128,25 +120,36 @@ local function finishWave(s)
 end
 
 function WaveManager.new(plan)
-    local self = setmetatable({}, Meta)
-    Private[self] = {
+    local s = {
         plan = copyPlan(plan), phase = "Idle", paused = false, wave = 0,
         total = 0, registered = 0, killed = 0, escaped = 0, completedWaves = 0,
         timeLeft = 0, timeError = 0, enemies = {}, log = {}, sequence = 0,
     }
-    return self
+    -- No global registry: state and its owner are collected together, even
+    -- if an enemy identity indirectly references the controller.
+    local self, bound = {}, {}
+    for name, method in pairs(Methods) do
+        local implementation = method
+        bound[name] = function(receiver, ...)
+            assert(rawequal(receiver, self), "Use a WaveManager instance with ':'")
+            return implementation(s, ...)
+        end
+    end
+    return setmetatable(self, {
+        __index = bound,
+        __newindex = function() error("WaveManager instances are read-only", 2) end,
+        __metatable = "WaveManager",
+    })
 end
 
-function Methods:start()
-    local s = get(self)
+function Methods.start(s)
     if s.phase ~= "Idle" then return false, "already-started" end
     beginWave(s)
     advance(s, 0)
     return true
 end
 
-function Methods:step(dt)
-    local s = get(self)
+function Methods.step(s, dt)
     if not finite(dt) or dt < 0 then return false, "invalid-dt" end
     if not live(s) then return false, "inactive" end
     if s.paused then return false, "paused" end
@@ -154,16 +157,14 @@ function Methods:step(dt)
     return true
 end
 
-function Methods:pause()
-    local s = get(self)
+function Methods.pause(s)
     if not live(s) or s.paused then return false, "cannot-pause" end
     s.paused = true
     record(s, "Paused")
     return true
 end
 
-function Methods:resume()
-    local s = get(self)
+function Methods.resume(s)
     if not live(s) or not s.paused then return false, "not-paused" end
     s.paused = false
     record(s, "Resumed")
@@ -178,8 +179,7 @@ local function validId(id)
         or t == "table" or t == "userdata"
 end
 
-function Methods:registerEnemy(token, id)
-    local s = get(self)
+function Methods.registerEnemy(s, token, id)
     if s.phase ~= "Active" then return false, "not-active" end
     if not rawequal(token, s.token) then return false, "stale-token" end
     if s.paused then return false, "paused" end
@@ -210,32 +210,28 @@ local function resolveEnemy(s, token, id, outcome, fatal)
     return true
 end
 
-function Methods:enemyKilled(token, id)
-    return resolveEnemy(get(self), token, id, "killed")
+function Methods.enemyKilled(s, token, id)
+    return resolveEnemy(s, token, id, "killed")
 end
 
-function Methods:enemyEscaped(token, id, fatal)
-    local s = get(self)
+function Methods.enemyEscaped(s, token, id, fatal)
     if fatal ~= nil and type(fatal) ~= "boolean" then return false, "invalid-fatal" end
     return resolveEnemy(s, token, id, "escaped", fatal)
 end
 
-function Methods:cancel()
-    local s = get(self)
+function Methods.cancel(s)
     if not live(s) then return false, "inactive" end
     terminal(s, "Cancelled", "cancelled")
     return true
 end
 
-function Methods:fail()
-    local s = get(self)
+function Methods.fail(s)
     if not live(s) then return false, "inactive" end
     terminal(s, "Failed", "external")
     return true
 end
 
-function Methods:getState()
-    local s = get(self)
+function Methods.getState(s)
     return {
         phase = s.phase, paused = s.paused, wave = s.wave,
         waveCount = #s.plan, completedWaves = s.completedWaves,
@@ -249,8 +245,7 @@ function Methods:getState()
     }
 end
 
-function Methods:getHistory()
-    local s = get(self)
+function Methods.getHistory(s)
     local result = {}
     for i = math.max(1, s.sequence - LOG_SIZE + 1), s.sequence do
         local event = s.log[(i - 1) % LOG_SIZE + 1]
