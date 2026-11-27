@@ -1,8 +1,8 @@
-# WaveManagerRoblox v2
+# WaveManagerRoblox 2.0.0
 
 A small, dependency-free, server-side wave controller for Roblox survival and tower-defense games. One controller represents one match, not one player.
 
-> **v2.0.0-rc.5 — breaking API change.** The original singleton API is not compatible. The core passed native Luau 0.748 CI; real Roblox Studio validation remains a release gate. See [audit report](AUDIT.md).
+> **2.0.0 — stable; breaking API change from v1.** Native Luau CI passed, and the repository owner reported passing the real Roblox Studio NPC stress suite. See [audit report](AUDIT.md) and [Studio validation record](docs/STUDIO_VALIDATION.md).
 
 [Guía rápida en español](docs/GUIA_ES.md)
 
@@ -143,7 +143,7 @@ lua5.4 tests/resource.lua
 python3 tests/mutation.py --runner lua5.4
 ```
 
-Verified [native Luau 0.748 CI](https://github.com/UniversoGalactico/WaveManagerRoblox/actions/runs/46081949237): 2,732,797 counted assertions, 157,961 randomized model operations, 500 success-biased campaigns, 128 exhaustive plans (30,528 abstract states, 885,312 commands), and 33/33 deliberate mutations detected. Portable Lua 5.4 CI passed 12 mock integration scenarios. [Expanded CI](https://github.com/UniversoGalactico/WaveManagerRoblox/actions/runs/46082099940) passed 360,605 fractional steps, 40,199 pauses, 5,184,000 simulated 60 Hz frames, and seven GC scenarios. Local tests additionally passed 256 interleaved matches and 20,000 generated configuration cases. These results are regression evidence, not a proof of correctness, real Roblox NPC throughput, or real Studio execution.
+Verified [native Luau 0.748 CI](https://github.com/UniversoGalactico/WaveManagerRoblox/actions/runs/46081949237): 2,732,797 counted assertions, 157,961 randomized model operations, 500 success-biased campaigns, 128 exhaustive plans (30,528 abstract states, 885,312 commands), and 33/33 deliberate mutations detected. Portable Lua 5.4 CI passed 12 mock integration scenarios. [Expanded CI](https://github.com/UniversoGalactico/WaveManagerRoblox/actions/runs/46082099940) passed 360,605 fractional steps, 40,199 pauses, 5,184,000 simulated 60 Hz frames, and seven GC scenarios. The [complete CI suite](https://github.com/UniversoGalactico/WaveManagerRoblox/actions/runs/46082266870) also passed 256 interleaved matches and 20,000 generated configuration cases. Separately, the repository owner confirmed all 18 Studio stress scenarios passed across the final test runs (intentional exception cases remain covered by CI). This is regression evidence, not a proof of correctness or a guarantee of live-server NPC throughput.
 
 ## License
 
