@@ -1,10 +1,11 @@
--- WaveManager v2.0.0-rc.3 | Server-side, dependency-free.
+-- WaveManager v2.0.0-rc.4 | Server-side, dependency-free.
 -- One instance per match (solo or co-op). Drive time with :step(dt).
-local WaveManager = { VERSION = "2.0.0-rc.3" }
+local WaveManager = { VERSION = "2.0.0-rc.4" }
 local Methods = {}
 local Private = setmetatable({}, { __mode = "k" })
 local Meta = { __index = Methods, __metatable = "WaveManager" }
 local MAX_WAVES, MAX_ENEMIES, LOG_SIZE = 1000, 10000, 64
+local TIME_EPSILON = 1e-9 -- sub-nanosecond residues are not gameplay time
 
 local function finite(n)
     return type(n) == "number" and n == n and n > -math.huge and n < math.huge
@@ -67,7 +68,7 @@ local function record(s, event)
 end
 
 local function enter(s, phase, remaining)
-    s.phase, s.timeLeft = phase, remaining
+    s.phase, s.timeLeft, s.timeError = phase, remaining, 0
     record(s, phase)
 end
 
@@ -94,11 +95,16 @@ end
 -- A step can cross an intermission, a countdown, and at most one active deadline.
 local function advance(s, dt)
     while live(s) and not s.paused do
-        if dt < s.timeLeft then
-            s.timeLeft = s.timeLeft - dt
+        if dt == 0 and s.timeLeft > 0 then return end
+        -- Compensated subtraction avoids accumulating frame-sized rounding errors.
+        local corrected = dt + s.timeError
+        local remaining = s.timeLeft - corrected
+        if remaining > TIME_EPSILON then
+            s.timeError = (remaining - s.timeLeft) + corrected
+            s.timeLeft = remaining
             return
         end
-        dt = dt - s.timeLeft
+        dt = math.max(0, -remaining)
         if s.phase == "Countdown" then
             s.token = {} -- unique identity, even across controllers
             enter(s, "Active", s.plan[s.wave].duration)
@@ -112,10 +118,10 @@ end
 
 local function finishWave(s)
     s.completedWaves = s.completedWaves + 1
-    clearEnemies(s)
     if s.wave == #s.plan then
         terminal(s, "Completed", "all-waves-cleared")
     else
+        clearEnemies(s)
         enter(s, "Intermission", s.plan[s.wave].intermission)
         advance(s, 0)
     end
@@ -126,7 +132,7 @@ function WaveManager.new(plan)
     Private[self] = {
         plan = copyPlan(plan), phase = "Idle", paused = false, wave = 0,
         total = 0, registered = 0, killed = 0, escaped = 0, completedWaves = 0,
-        timeLeft = 0, enemies = {}, log = {}, sequence = 0,
+        timeLeft = 0, timeError = 0, enemies = {}, log = {}, sequence = 0,
     }
     return self
 end
@@ -168,7 +174,7 @@ end
 local function validId(id)
     local t = type(id)
     return (t == "string" and #id > 0 and #id <= 128)
-        or (t == "number" and finite(id) and id % 1 == 0 and math.abs(id) <= 9007199254740991)
+        or (t == "number" and finite(id) and id % 1 == 0 and id >= -9007199254740991 and id <= 9007199254740991)
         or t == "table" or t == "userdata"
 end
 
