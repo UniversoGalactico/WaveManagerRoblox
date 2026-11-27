@@ -155,6 +155,31 @@ local log = h:getHistory()
 eq(#log, 64)
 for i = 2, #log do eq(log[i].sequence, log[i-1].sequence + 1) end
 
+-- A lethal escape must beat a simultaneous wave clear, without accepting stale,
+-- duplicate, foreign, unregistered, or malformed notifications.
+local fatal = W.new({wave(2,0,10,0)})
+ok(fatal:start())
+local ft = fatal:getState().token
+ok(fatal:registerEnemy(ft,"a")); ok(fatal:registerEnemy(ft,"b"))
+no(fatal:enemyEscaped({},"a",true))
+no(fatal:enemyEscaped(ft,"unknown",true))
+no(fatal:enemyEscaped(ft,"a",1))
+ok(fatal:enemyEscaped(ft,"a",false))
+no(fatal:enemyEscaped(ft,"a",true))
+eq(fatal:getState().phase,"Active")
+ok(fatal:pause())
+ok(fatal:enemyEscaped(ft,"b",true))
+local fs = fatal:getState()
+eq(fs.phase,"Failed"); eq(fs.reason,"fatal-escape"); eq(fs.completedWaves,0)
+eq(fs.escapedEnemies,2); eq(fs.remainingEnemies,0); eq(fs.paused,false); eq(fs.token,nil)
+no(fatal:enemyEscaped(ft,"b",true))
+local early = W.new({wave(3,0,10,0),wave(1,0,1,0)})
+ok(early:start())
+local et = early:getState().token
+ok(early:registerEnemy(et,"fatal")); ok(early:enemyEscaped(et,"fatal",true))
+eq(early:getState().remainingEnemies,2); eq(early:getState().wave,1)
+eq(early:getState().phase,"Failed")
+
 -- Independent deadline-based reference model. Integer time deliberately avoids
 -- floating point ambiguity. The implementation instead uses remaining durations.
 local function model(plan2)
