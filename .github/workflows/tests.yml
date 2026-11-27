@@ -1,0 +1,29 @@
+name: WaveManager tests
+on:
+  pull_request:
+  push:
+    branches: [main, wave-manager-v2]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  luau:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fetch pinned Luau source
+        uses: actions/checkout@v4
+        with:
+          repository: luau-lang/luau
+          ref: '0.748'
+          path: .luau-toolchain
+          persist-credentials: false
+      - name: Build Luau CLI
+        run: |
+          cmake -S .luau-toolchain -B /tmp/luau-build -DCMAKE_BUILD_TYPE=Release
+          cmake --build /tmp/luau-build --target Luau.Repl.CLI -j 2
+      - name: Run native Luau regression suite
+        run: /tmp/luau-build/luau tests/run.lua
