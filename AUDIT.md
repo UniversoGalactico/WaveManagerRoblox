@@ -48,11 +48,13 @@ This design costs memory and dispatch overhead per controller. A local synthetic
 | Synthetic capacity | 1,000 sequential waves; one wave with 10,000 distinct enemy identities |
 | Portable Lua 5.4 regression | 2,732,800 counted assertions, including forced GC checks |
 | Lua mock integration | 12/12 scenarios, including delayed events, lag spike, fatal setup errors and teardown |
-| Fractional clock (local Lua 5.4) | 360,605 steps against integer-microsecond reference; 40,199 pauses |
-| Long timer (local Lua 5.4) | 5,184,000 simulated 60 Hz frames (24 hours of logical time) |
-| Resource release (local Lua 5.4) | 7 GC scenarios; 1,000 abandoned cyclic controllers collected |
+| Fractional clock (native Luau and local Lua 5.4) | 360,605 steps against integer-microsecond reference; 40,199 pauses |
+| Long timer (native Luau and local Lua 5.4) | 5,184,000 simulated 60 Hz frames (24 hours of logical time) |
+| Resource release (portable Lua 5.4 CI) | 7 GC scenarios; 1,000 abandoned cyclic controllers collected |
+| Match isolation (local Lua 5.4) | 256 interleaved matches, 5,120 waves, 61,184 commands |
+| Generated configuration (local Lua 5.4) | 20,000 plans: 4,982 valid copied, 15,018 invalid rejected |
 
-Native and portable regression/mutation/mock CI evidence: [run 46081949237](https://github.com/UniversoGalactico/WaveManagerRoblox/actions/runs/46081949237), commit 85353af677eff99b1a625c5ef08b739bd86fa86d. Later commits add the numeric and resource tests to CI; consult the current PR checks for their status. Local runs used Lua 5.4, not Roblox.
+Native and portable regression/mutation/mock CI evidence: [run 46081949237](https://github.com/UniversoGalactico/WaveManagerRoblox/actions/runs/46081949237), commit 85353af677eff99b1a625c5ef08b739bd86fa86d. Numeric and GC checks subsequently passed in [run 46082099940](https://github.com/UniversoGalactico/WaveManagerRoblox/actions/runs/46082099940). All 33 mutant sources were also independently compiled under Lua 5.4 to exclude syntax-only failures. All 11 code/test/example file blob IDs were checked against the locally tested copies; consult the current PR checks for the complete suite. Local runs used Lua 5.4, not Roblox.
 
 ## Complexity and boundaries
 
