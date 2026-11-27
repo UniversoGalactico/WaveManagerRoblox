@@ -1,6 +1,6 @@
--- WaveManager v2.0.0-rc.2 | Server-side, dependency-free.
+-- WaveManager v2.0.0-rc.3 | Server-side, dependency-free.
 -- One instance per match (solo or co-op). Drive time with :step(dt).
-local WaveManager = { VERSION = "2.0.0-rc.2" }
+local WaveManager = { VERSION = "2.0.0-rc.3" }
 local Methods = {}
 local Private = setmetatable({}, { __mode = "k" })
 local Meta = { __index = Methods, __metatable = "WaveManager" }
@@ -185,7 +185,7 @@ function Methods:registerEnemy(token, id)
     return true
 end
 
-local function resolveEnemy(s, token, id, outcome)
+local function resolveEnemy(s, token, id, outcome, fatal)
     if s.phase ~= "Active" then return false, "not-active" end
     if not rawequal(token, s.token) then return false, "stale-token" end
     if not validId(id) then return false, "invalid-enemy-id" end
@@ -196,7 +196,11 @@ local function resolveEnemy(s, token, id, outcome)
     else
         s.escaped = s.escaped + 1
     end
-    if s.killed + s.escaped == s.total then finishWave(s) end
+    if fatal then
+        terminal(s, "Failed", "fatal-escape")
+    elseif s.killed + s.escaped == s.total then
+        finishWave(s)
+    end
     return true
 end
 
@@ -204,8 +208,10 @@ function Methods:enemyKilled(token, id)
     return resolveEnemy(get(self), token, id, "killed")
 end
 
-function Methods:enemyEscaped(token, id)
-    return resolveEnemy(get(self), token, id, "escaped")
+function Methods:enemyEscaped(token, id, fatal)
+    local s = get(self)
+    if fatal ~= nil and type(fatal) ~= "boolean" then return false, "invalid-fatal" end
+    return resolveEnemy(s, token, id, "escaped", fatal)
 end
 
 function Methods:cancel()
