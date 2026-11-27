@@ -87,6 +87,29 @@ local hist = m:getHistory()
 hist[1].event = "bad"
 eq(m:getHistory()[1].event, "Countdown")
 
+-- Instance methods are bound to their owner, and public field writes cannot
+-- shadow a method or masquerade as internal state.
+local ownerA = W.new({wave(1,0,1,0)})
+local ownerB = W.new({wave(1,0,1,0)})
+eq(pcall(function() ownerA.step = function() end end),false)
+eq(pcall(function() ownerA.phase = "Completed" end),false)
+eq(pcall(ownerA.start,ownerB),false)
+eq(pcall(ownerA.start),false)
+eq(ownerA:getState().phase,"Idle"); eq(ownerB:getState().phase,"Idle")
+if _VERSION == "Lua 5.4" then
+    -- Even a registered ID that contains its owner must not root a dead match.
+    local weak = setmetatable({}, {__mode="v"})
+    do
+        local abandoned = W.new({wave(1,0,1,0)})
+        assert(abandoned:start())
+        local identity = {owner=abandoned}
+        assert(abandoned:registerEnemy(abandoned:getState().token,identity))
+        weak[1],weak[2] = abandoned,identity
+    end
+    collectgarbage("collect"); collectgarbage("collect")
+    eq(weak[1],nil); eq(weak[2],nil)
+end
+
 -- Deadline, huge delta, failure/cancel, and zero-duration phase behavior.
 for _, dt in ipairs({0, -1, math.huge, -math.huge, 0/0, "1", false}) do
     local c = W.new({wave(1, 0, 1, 0)})
