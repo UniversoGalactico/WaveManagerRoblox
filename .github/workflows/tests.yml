@@ -1,0 +1,89 @@
+name: WaveManager tests
+on:
+  pull_request:
+  push:
+    branches: [main, wave-manager-v2]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  luau:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fetch pinned Luau source
+        uses: actions/checkout@v4
+        with:
+          repository: luau-lang/luau
+          ref: '0.748'
+          path: .luau-toolchain
+          persist-credentials: false
+      - name: Build Luau CLI
+        run: |
+          cmake -S .luau-toolchain -B /tmp/luau-build -DCMAKE_BUILD_TYPE=Release
+          cmake --build /tmp/luau-build --target Luau.Repl.CLI -j 2
+      - name: Run native Luau regression suite
+        run: /tmp/luau-build/luau tests/run.lua
+      - name: Explore bounded state space
+        run: /tmp/luau-build/luau tests/exhaustive.lua
+      - name: Fractional-time and simulated-day checks
+        run: /tmp/luau-build/luau tests/numeric.lua
+      - name: Generated configuration validation
+        run: /tmp/luau-build/luau tests/configuration.lua
+      - name: Interleaved match isolation
+        run: /tmp/luau-build/luau tests/isolation.lua
+      - name: Detect deliberate behavioral regressions
+        run: python3 tests/mutation.py --runner /tmp/luau-build/luau
+  portable-integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install Lua 5.4
+        run: sudo apt-get update && sudo apt-get install -y lua5.4
+      - name: Run portable regression suite
+        run: lua5.4 tests/run.lua
+      - name: Test the example boundary with mocks (not Studio)
+        run: lua5.4 tests/mock_roblox.lua
+      - name: Check identity release with forced Lua collection
+        run: lua5.4 tests/resource.lua
+
+  publish-v2:
+    # Publish this one specific release only, after both test jobs pass on main.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [luau, portable-integration]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    concurrency:
+      group: wave-manager-release-v2-0-0
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Publish stable v2.0.0 (no overwrite)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! grep -Fq 'local WaveManager = { VERSION = "2.0.0" }' WaveManagerRoblox.lua; then
+            echo "Not the v2.0.0 release; skipping."
+            exit 0
+          fi
+          if gh release view v2.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v2.0.0 already exists; leaving it unchanged."
+            exit 0
+          fi
+          gh release create v2.0.0 WaveManagerRoblox.lua \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "WaveManagerRoblox 2.0.0" \
+            --notes-file CHANGELOG.md \
+            --latest
