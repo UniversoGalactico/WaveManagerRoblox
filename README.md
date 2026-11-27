@@ -2,7 +2,7 @@
 
 A small, dependency-free, server-side wave controller for Roblox survival and tower-defense games. One controller represents one match, not one player.
 
-> **v2.0.0-rc.4 — breaking API change.** The original singleton API is not compatible. Native Luau CI and Roblox Studio validation are release gates; the core regression suite has been executed locally under Lua 5.4.
+> **v2.0.0-rc.5 — breaking API change.** The original singleton API is not compatible. The core passed native Luau 0.748 CI; real Roblox Studio validation remains a release gate. See [audit report](AUDIT.md).
 
 ## Install
 
@@ -106,7 +106,8 @@ A stale or duplicate notification cannot deal damage through this pattern. A fat
 4. Use a real death event, e.g. Humanoid.Died. Destroying a model does not necessarily mean it was killed. Use enemyEscaped for escapes, and fail/cancel for external termination.
 5. Detect new waves by token, not just phase: zero countdown and intermission can transition directly from Active to Active in the same call.
 6. Spawn, despawn, movement, rewards, player lifecycle, networking and UI belong to the caller. Cancel and clean up when the owner removes a live match.
-7. Core calls do not yield or invoke callbacks. Use a single serial execution context; this is not cross-Actor synchronization. A timeout processed before a death wins by definition. Fractional seconds use compensated floating-point subtraction. After a positive time step, a residue of 1 nanosecond or less is treated as elapsed; a zero step does not consume a positive timer.
+7. The example's Destroying connection is only best-effort; with deferred engine signals, use explicit teardown in the match owner rather than relying on a destroyed script to receive its own event.
+8. Core calls do not yield or invoke callbacks. Use a single serial execution context; this is not cross-Actor synchronization. A timeout processed before a death wins by definition. Fractional seconds use compensated floating-point subtraction. After a positive time step, a residue of 1 nanosecond or less is treated as elapsed; a zero step does not consume a positive timer.
 
 ## Migration from v1
 
@@ -125,14 +126,18 @@ Player-to-match mappings now belong to your game. Multiple players can share one
 ```sh
 luau tests/run.lua
 luau tests/exhaustive.lua
+luau tests/numeric.lua
 python3 tests/mutation.py --runner luau
 # Or use Lua 5.4 as a portable fallback:
 lua5.4 tests/run.lua
 lua5.4 tests/exhaustive.lua
+lua5.4 tests/numeric.lua
+lua5.4 tests/mock_roblox.lua
+lua5.4 tests/resource.lua
 python3 tests/mutation.py --runner lua5.4
 ```
 
-The local Lua 5.4 run for rc.4 passed 2,732,792 counted assertions, including 157,961 model-checked randomized operations, 500 success-biased campaigns, a 1,000-wave run and a 10,000-enemy wave. Additional fractional-timer checks include 216,000 simulated frames. The bounded exhaustive test explored 128 two-wave configurations, 30,528 abstract states and 885,312 commands (including rejection codes). The mutation audit detected all 31 intentional regressions. These checks are not a proof of correctness, a native Luau result, or an NPC throughput benchmark.
+Verified [native Luau 0.748 CI](https://github.com/UniversoGalactico/WaveManagerRoblox/actions/runs/46081949237): 2,732,797 counted assertions, 157,961 randomized model operations, 500 success-biased campaigns, 128 exhaustive plans (30,528 abstract states, 885,312 commands), and 33/33 deliberate mutations detected. Portable Lua 5.4 CI passed 12 mock integration scenarios. Additional local tests passed 360,605 fractional steps, 40,199 pauses, 5,184,000 simulated 60 Hz frames, and seven GC scenarios. These results are regression evidence, not a proof of correctness, real Roblox NPC throughput, or real Studio execution.
 
 ## License
 
