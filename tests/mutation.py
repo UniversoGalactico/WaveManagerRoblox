@@ -18,7 +18,7 @@ MUTANTS = [
     ("repeat start", '    if s.phase ~= "Idle" then return false, "already-started" end\n', '', 1),
     ("paused step reports success", '    if s.paused then return false, "paused" end\n', '', 1),
     ("paused registration", '    if s.paused then return false, "paused" end\n', '', 2),
-    ("discard overshoot", '        dt = dt - s.timeLeft', '        dt = 0', 1),
+    ("discard overshoot", '        dt = math.max(0, -remaining)', '        dt = 0', 1),
     ("timeout wins", 'terminal(s, "Failed", "timeout")', 'terminal(s, "Completed", "timeout")', 1),
     ("alias caller plan", '    return result\nend\n\nlocal function get', '    return plan\nend\n\nlocal function get', 1),
     ("stale registration", '    if not rawequal(token, s.token) then return false, "stale-token" end\n', '', 1),
@@ -43,6 +43,9 @@ MUTANTS = [
     ("missing countdown", 'enter(s, "Countdown", w.countdown)', 'enter(s, "Countdown", 0)', 1),
     ("history aliases internal log", '        result[#result + 1] = {\n            sequence = event.sequence, event = event.event, wave = event.wave,\n            phase = event.phase, paused = event.paused, reason = event.reason,\n        }', '        result[#result + 1] = event', 1),
     ("repeat enemy after resolution", '    s.enemies[id] = false', '    s.enemies[id] = nil', 1),
+    ("no clock compensation", 'local corrected = dt + s.timeError', 'local corrected = dt', 1),
+    ("no timer tolerance", 'local TIME_EPSILON = 1e-9', 'local TIME_EPSILON = 0', 1),
+    ("unsafe numeric identities", 'id >= -9007199254740991 and id <= 9007199254740991', 'true', 1),
 ]
 
 
